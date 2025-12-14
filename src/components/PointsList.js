@@ -1,131 +1,244 @@
-import { useState, useEffect, useRef } from 'react';
-import { supabase } from '../services/supabaseClient';
-import PointForm from './PointForm';
+import { useState, useEffect } from 'react';
+import { useUser } from '../contexts/UserContext';
+import { usePoints } from '../contexts/PointsContext';
+import PointDetailPanel from './PointDetailPanel';
 
-export default function PointsList({ filter }) {
+export default function PointsList({ filter, setFilter }) {
+  const { currentProfile } = useUser();
+  const { allPoints } = usePoints();
   const [points, setPoints] = useState([]);
-  const subscriptionRef = useRef(null);
+  const [selectedPoint, setSelectedPoint] = useState(null);
+  const [isRouteMode, setIsRouteMode] = useState(false);
+  const [selectedForRoute, setSelectedForRoute] = useState([]);
 
-  // Ajoute ou met à jour un point sans doublon
-  const upsertPoint = (record) => {
-    setPoints(prev => {
-      const exists = prev.some(p => p.id === record.id);
-      if (exists) {
-        return prev.map(p => (p.id === record.id ? record : p));
+  // Filtrer les points selon le filtre actif
+  useEffect(() => {
+    const filteredRecords = filter === 'all'
+      ? allPoints
+      : allPoints.filter(p => p.status === filter);
+    setPoints(filteredRecords);
+  }, [filter, allPoints]);
+
+  // Calculer le total des points
+  const totalPoints = allPoints.reduce((sum, p) => sum + (p.points || 0), 0);
+
+  // Gérer la sélection pour l'itinéraire
+  const togglePointForRoute = (point) => {
+    setSelectedForRoute(prev => {
+      const isSelected = prev.some(p => p.id === point.id);
+      if (isSelected) {
+        return prev.filter(p => p.id !== point.id);
       }
-      return [record, ...prev];
+      return [...prev, point];
     });
   };
 
-  useEffect(() => {
-    const fetchPoints = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('points')
-          .select('*')
-          .order('created_at', { ascending: false });
+  // Générer l'URL Google Maps avec les waypoints
+  const generateGoogleMapsUrl = () => {
+    if (selectedForRoute.length === 0) return;
 
-        if (error) throw error;
+    // Google Maps supporte: origin, destination, et waypoints entre les deux
+    // Format: https://www.google.com/maps/dir/?api=1&origin=lat,lng&destination=lat,lng&waypoints=lat,lng|lat,lng
 
-        // filtre selon le filter reçu en prop
-        const filteredRecords = filter === 'all' ? data : data.filter(p => p.status === filter);
-        setPoints(filteredRecords);
-      } catch (error) {
-        console.error('Erreur fetch points:', error);
-      }
-    };
+    const points = selectedForRoute;
 
-    fetchPoints();
+    if (points.length === 1) {
+      // Un seul point: ouvrir la navigation vers ce point
+      const p = points[0];
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${p.latitude},${p.longitude}`, '_blank');
+      return;
+    }
 
-    // S'abonner aux changements en temps réel
-    const channel = supabase
-      .channel('points-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'points' }, (payload) => {
-        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-          if (filter === 'all' || payload.new.status === filter) {
-            upsertPoint(payload.new);
-          } else {
-            // si le point ne correspond plus au filtre, on le retire
-            setPoints(prev => prev.filter(p => p.id !== payload.new.id));
-          }
-        }
-        if (payload.eventType === 'DELETE') {
-          setPoints(prev => prev.filter(p => p.id !== payload.old.id));
-        }
-      })
-      .subscribe();
+    // Plusieurs points: créer un itinéraire
+    const origin = points[0];
+    const destination = points[points.length - 1];
+    const waypoints = points.slice(1, -1);
 
-    subscriptionRef.current = channel;
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}`;
 
-    return () => {
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
-      }
-    };
-  }, [filter]);
+    if (waypoints.length > 0) {
+      const waypointsStr = waypoints.map(p => `${p.latitude},${p.longitude}`).join('|');
+      url += `&waypoints=${waypointsStr}`;
+    }
+
+    window.open(url, '_blank');
+  };
+
+  // Quitter le mode itinéraire
+  const exitRouteMode = () => {
+    setIsRouteMode(false);
+    setSelectedForRoute([]);
+  };
+
+  const filters = [
+    { key: 'all', label: 'Tous' },
+    { key: 'selected', label: 'Flashés' },
+    { key: 'to_select', label: 'À flasher' },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Section Formulaire */}
-      <div>
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">
-          ➕ Ajouter un nouveau point
+    <div className="bg-white shadow-card p-6 h-full flex flex-col overflow-hidden">
+      {/* Header avec titre et total */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-h2 text-grey-700">
+          Points de {currentProfile?.name || '...'}
         </h2>
-        <PointForm />
+        <div className="bg-primary-500 text-white px-4 py-2 rounded-chip font-semibold text-sm">
+          {totalPoints} pts
+        </div>
       </div>
 
-      {/* Section Liste */}
-      <div>
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">
-          📋 Liste des points ({points.length})
-        </h2>
+      {/* Filtres et bouton itinéraire */}
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-6 px-6 lg:mx-0 lg:px-0">
+          {filters.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`chip px-4 py-2 rounded-chip font-medium text-sm whitespace-nowrap ${
+                filter === f.key ? 'chip-active' : 'chip-inactive'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
 
-        {points.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            <div className="text-gray-400 text-5xl mb-4">📍</div>
-            <p className="text-gray-600">Aucun point pour le moment</p>
-            <p className="text-sm text-gray-500 mt-2">Ajoutez votre premier point ci-dessus</p>
-          </div>
+        {/* Bouton mode itinéraire */}
+        {!isRouteMode ? (
+          <button
+            onClick={() => setIsRouteMode(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 transition-colors whitespace-nowrap"
+            title="Créer un itinéraire"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            <span className="hidden sm:inline">Itinéraire</span>
+          </button>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {points.map(p => (
-              <div
-                key={p.id}
-                className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition duration-200 border-l-4 border-blue-500"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-gray-800 text-lg">
-                    {p.name}
-                  </h3>
-                  <span
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      p.status === 'selected'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}
-                  >
-                    {p.status === 'selected' ? '✅ Flashé' : '📍 À flasher'}
-                  </span>
-                </div>
-
-                <div className="space-y-1 text-sm text-gray-600">
-                  <div className="flex items-center">
-                    <span className="font-medium mr-2">🌍 Lat:</span>
-                    <span className="font-mono">{p.latitude.toFixed(6)}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="font-medium mr-2">🌍 Lon:</span>
-                    <span className="font-mono">{p.longitude.toFixed(6)}</span>
-                  </div>
-                  <div className="flex items-center text-xs text-gray-500 mt-2">
-                    <span>🕐 {new Date(p.created_at).toLocaleDateString('fr-FR')}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <button
+            onClick={exitRouteMode}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-grey-600 hover:bg-grey-100 transition-colors whitespace-nowrap"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span className="hidden sm:inline">Annuler</span>
+          </button>
         )}
       </div>
+
+      {/* Barre d'action itinéraire */}
+      {isRouteMode && (
+        <div className="mb-4 p-3 bg-primary-50 border border-primary-200 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm text-primary-700">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>
+              {selectedForRoute.length === 0
+                ? 'Sélectionnez les points pour votre itinéraire'
+                : `${selectedForRoute.length} point${selectedForRoute.length > 1 ? 's' : ''} sélectionné${selectedForRoute.length > 1 ? 's' : ''}`
+              }
+            </span>
+          </div>
+          <button
+            onClick={generateGoogleMapsUrl}
+            disabled={selectedForRoute.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            Ouvrir dans Maps
+          </button>
+        </div>
+      )}
+
+      {/* Liste des points */}
+      <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
+        {points.length === 0 ? (
+          <div className="py-12 text-center">
+            <div className="w-16 h-16 bg-grey-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-grey-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              </svg>
+            </div>
+            <p className="text-grey-500 font-medium">Aucun point pour le moment</p>
+            <p className="text-sm text-grey-300 mt-1">Ajoutez votre premier point</p>
+          </div>
+        ) : (
+          points.map((p, index) => {
+            const isSelectedForRoute = selectedForRoute.some(sp => sp.id === p.id);
+            const routeOrder = selectedForRoute.findIndex(sp => sp.id === p.id) + 1;
+
+            return (
+              <div
+                key={p.id}
+                onClick={() => isRouteMode ? togglePointForRoute(p) : setSelectedPoint(p)}
+                className={`flex items-start gap-3 p-4 transition-colors card-hover cursor-pointer ${
+                  isRouteMode && isSelectedForRoute
+                    ? 'bg-primary-50 border-2 border-primary-300'
+                    : 'bg-grey-50 hover:bg-grey-100'
+                }`}
+              >
+                {/* Checkbox ou indicateur de statut */}
+                {isRouteMode ? (
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                      isSelectedForRoute
+                        ? 'bg-primary-500 text-white'
+                        : 'bg-grey-200 text-grey-400'
+                    }`}>
+                      {isSelectedForRoute ? routeOrder : index + 1}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
+                    style={{ backgroundColor: p.status === 'selected' ? 'var(--color-success-500)' : 'var(--color-warning-500)' }}
+                  />
+                )}
+
+                {/* Contenu */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-grey-700 text-base truncate">
+                    {p.name || 'Point sans nom'}
+                  </h3>
+                  {p.address && (
+                    <p className="text-sm text-grey-500 mt-1 truncate">
+                      {p.address}
+                    </p>
+                  )}
+                  <p className="text-xs text-grey-400 font-mono mt-1">
+                    {p.latitude?.toFixed(4)}, {p.longitude?.toFixed(4)}
+                  </p>
+                </div>
+
+                {/* Points */}
+                <div className="flex-shrink-0">
+                  <span className={`px-3 py-1 rounded-chip text-sm font-medium ${
+                    p.status === 'selected'
+                      ? 'badge-success'
+                      : 'badge-warning'
+                  }`}>
+                    {p.points || 0} pts
+                  </span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Panel de détail */}
+      {selectedPoint && (
+        <PointDetailPanel
+          point={selectedPoint}
+          onClose={() => setSelectedPoint(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,29 +1,169 @@
+import { useState, useEffect } from 'react';
+import { useUser } from '../contexts/UserContext';
+
 export default function Layout({ children }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const { profiles, currentProfile, switchProfile, loading } = useUser();
+
+  // Détecter le scroll pour changer le style du header
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-paris-background flex items-center justify-center">
+        <div className="text-grey-500">Chargement...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-paris-background">
       {/* Header */}
-      <header className="bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            📍 Carte Interactive des Points
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Géolocalisez et suivez vos points d'intérêt
-          </p>
+      <header className="sticky top-0 z-50 shadow-md">
+        {/* Background animé avec slide de haut en bas */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div
+            className={`absolute inset-0 bg-white/95 backdrop-blur-sm transition-transform duration-300 ease-out ${
+              isScrolled ? 'translate-y-0' : '-translate-y-full'
+            }`}
+          />
+        </div>
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div className="flex items-center gap-3">
+              <img
+                src="/logo-inviders.png"
+                alt="Inviders"
+                className="h-10 w-auto"
+              />
+              <span className="text-xl font-semibold text-grey-700">inviders baudic semete</span>
+            </div>
+
+            {/* Desktop User Selector */}
+            <div className="hidden md:flex items-center gap-4 relative">
+              <button
+                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                className="flex items-center gap-3 px-3 py-2 hover:bg-grey-100 transition-colors cursor-pointer"
+              >
+                <span className="text-sm text-grey-500">{currentProfile?.name || 'Sélectionner'}</span>
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
+                  style={{ backgroundColor: currentProfile?.color || '#3B82F6' }}
+                >
+                  {currentProfile?.initials || '??'}
+                </div>
+                <svg className="w-4 h-4 text-grey-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Dropdown menu */}
+              {profileMenuOpen && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-white shadow-lg border border-grey-200 py-2" style={{ zIndex: 9999 }}>
+                  {profiles.map((profile) => (
+                    <button
+                      key={profile.id}
+                      onClick={() => {
+                        switchProfile(profile);
+                        setProfileMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-grey-50 transition-colors ${
+                        currentProfile?.id === profile.id ? 'bg-primary-50' : ''
+                      }`}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                        style={{ backgroundColor: profile.color }}
+                      >
+                        {profile.initials}
+                      </div>
+                      <span className="text-sm text-grey-700">{profile.name}</span>
+                      {currentProfile?.id === profile.id && (
+                        <svg className="w-4 h-4 text-primary-500 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-lg text-grey-500 hover:bg-grey-100"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
+
+          {/* Mobile Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden py-4 border-t border-grey-100">
+              <div className="text-xs text-grey-400 uppercase tracking-wide px-2 mb-3">
+                Changer de profil
+              </div>
+              <div className="space-y-1">
+                {profiles.map((profile) => (
+                  <button
+                    key={profile.id}
+                    onClick={() => {
+                      switchProfile(profile);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-2 py-2 text-left hover:bg-grey-50 transition-colors ${
+                      currentProfile?.id === profile.id ? 'bg-primary-50' : ''
+                    }`}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
+                      style={{ backgroundColor: profile.color }}
+                    >
+                      {profile.initials}
+                    </div>
+                    <span className="text-sm text-grey-700">{profile.name}</span>
+                    {currentProfile?.id === profile.id && (
+                      <svg className="w-4 h-4 text-primary-500 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </header>
+
+      {/* Click outside to close profile menu */}
+      {profileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setProfileMenuOpen(false)}
+        />
+      )}
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {children}
       </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-sm text-gray-600">
-          Propulsé par React, Supabase & Leaflet
-        </div>
-      </footer>
     </div>
   );
 }

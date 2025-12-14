@@ -1,30 +1,40 @@
 import { useState } from 'react';
 import Layout from './components/Layout';
 import MapView from './components/MapView';
-import Filters from './components/Filters';
 import PointsList from './components/PointsList';
+import PointForm from './components/PointForm';
 
 function App() {
   const [filter, setFilter] = useState('all');
-  const refreshKey = useState(0);
 
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Filtres */}
-        <Filters filter={filter} setFilter={setFilter} />
-
-        {/* Layout responsive avec la carte et la liste */}
+        {/* Desktop: Liste et Carte côte à côte */}
+        {/* Mobile: empilé (Liste -> Carte) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Colonne gauche : Liste et formulaire */}
-          <div className="order-2 lg:order-1">
-            <PointsList filter={filter} />
+          {/* Liste des points */}
+          <div className="order-1 h-[400px] lg:h-[560px]">
+            <PointsList filter={filter} setFilter={setFilter} />
           </div>
 
-          {/* Colonne droite : Carte */}
-          <div className="order-1 lg:order-2 lg:sticky lg:top-6 lg:self-start">
-            <MapView filter={filter} refreshKey={refreshKey[0]} />
+          {/* Carte */}
+          <div className="order-2 h-[400px] lg:h-[560px]">
+            <div className="bg-white shadow-card overflow-hidden h-full flex flex-col">
+              <div className="bg-primary-500 text-white px-4 py-3 font-medium">
+                Carte
+              </div>
+              <div className="flex-1">
+                <MapView filter={filter} />
+              </div>
+            </div>
           </div>
+        </div>
+
+        {/* Formulaire en dessous - sur une ligne */}
+        <div className="bg-white shadow-card p-6">
+          <h2 className="text-h2 text-grey-700 mb-6">Ajouter un point</h2>
+          <PointForm />
         </div>
       </div>
     </Layout>

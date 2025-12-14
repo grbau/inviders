@@ -1,0 +1,340 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '../services/supabaseClient';
+import { usePoints } from '../contexts/PointsContext';
+
+export default function PointDetailPanel({ point, onClose }) {
+  const { refreshPoints } = usePoints();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [form, setForm] = useState({
+    name: '',
+    address: '',
+    latitude: '',
+    longitude: '',
+    points: '',
+    status: 'to_select',
+  });
+
+  // Gérer l'animation d'entrée et le body overflow
+  useEffect(() => {
+    if (point) {
+      // Bloquer le scroll du body
+      document.body.style.overflow = 'hidden';
+      // Déclencher l'animation après le montage
+      requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [point]);
+
+  useEffect(() => {
+    if (point) {
+      setForm({
+        name: point.name || '',
+        address: point.address || '',
+        latitude: point.latitude?.toString() || '',
+        longitude: point.longitude?.toString() || '',
+        points: point.points?.toString() || '0',
+        status: point.status || 'to_select',
+      });
+      setIsEditing(false);
+    }
+  }, [point]);
+
+  // Fermeture avec animation
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 300);
+  };
+
+  if (!point) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from('points')
+        .update({
+          name: form.name,
+          address: form.address,
+          latitude: parseFloat(form.latitude),
+          longitude: parseFloat(form.longitude),
+          points: parseInt(form.points) || 0,
+          status: form.status,
+        })
+        .eq('id', point.id);
+
+      if (error) throw error;
+
+      setIsEditing(false);
+      refreshPoints();
+    } catch (error) {
+      alert('Erreur: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce point ?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('points')
+        .delete()
+        .eq('id', point.id);
+
+      if (error) throw error;
+
+      refreshPoints();
+      handleClose();
+    } catch (error) {
+      alert('Erreur: ' + error.message);
+    }
+  };
+
+  const inputClasses = "w-full h-11 px-4 border border-grey-300 bg-white text-grey-700 placeholder-grey-400 input-focus transition-all";
+  const labelClasses = "block text-xs font-medium text-grey-500 uppercase tracking-wide mb-2";
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 bg-black z-40 transition-opacity duration-300 ${
+          isVisible ? 'opacity-50' : 'opacity-0'
+        }`}
+        onClick={handleClose}
+      />
+
+      {/* Panel */}
+      <div className={`fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-lg z-50 flex flex-col overflow-hidden transition-transform duration-300 ease-out ${
+        isVisible ? 'translate-x-0' : 'translate-x-full'
+      }`}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-grey-200">
+          <h2 className="text-h3 text-grey-700">
+            {isEditing ? 'Modifier le pixel' : 'Détails du pixel'}
+          </h2>
+          <button
+            onClick={handleClose}
+            className="p-2 text-grey-400 hover:text-grey-700 hover:bg-grey-100 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {isEditing ? (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Nom */}
+              <div>
+                <label className={labelClasses}>Nom</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className={inputClasses}
+                  placeholder="Nom du point"
+                />
+              </div>
+
+              {/* Adresse */}
+              <div>
+                <label className={labelClasses}>Adresse</label>
+                <textarea
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  className="w-full px-4 py-3 border border-grey-300 bg-white text-grey-700 placeholder-grey-400 input-focus transition-all resize-none"
+                  rows={3}
+                  placeholder="Adresse complète"
+                />
+              </div>
+
+              {/* Coordonnées */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClasses}>Latitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={form.latitude}
+                    onChange={(e) => setForm({ ...form, latitude: e.target.value })}
+                    className={inputClasses}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className={labelClasses}>Longitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={form.longitude}
+                    onChange={(e) => setForm({ ...form, longitude: e.target.value })}
+                    className={inputClasses}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Points */}
+              <div>
+                <label className={labelClasses}>Points</label>
+                <input
+                  type="number"
+                  value={form.points}
+                  onChange={(e) => setForm({ ...form, points: e.target.value })}
+                  className={inputClasses}
+                  placeholder="0"
+                />
+              </div>
+
+              {/* Statut */}
+              <div>
+                <label className={labelClasses}>Statut</label>
+                <div className="flex h-11">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, status: 'to_select' })}
+                    className={`flex-1 px-3 text-sm font-medium transition-colors ${
+                      form.status === 'to_select'
+                        ? 'bg-warning-50 text-warning-700 border-2 border-warning-500'
+                        : 'bg-grey-100 text-grey-500 border border-grey-300 hover:bg-grey-200'
+                    }`}
+                  >
+                    À flasher
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, status: 'selected' })}
+                    className={`flex-1 px-3 text-sm font-medium transition-colors ${
+                      form.status === 'selected'
+                        ? 'bg-success-50 text-success-700 border-2 border-success-500'
+                        : 'bg-grey-100 text-grey-500 border border-grey-300 hover:bg-grey-200'
+                    }`}
+                  >
+                    Flashé
+                  </button>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="flex-1 h-11 border border-grey-300 text-grey-700 font-medium hover:bg-grey-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 h-11 bg-primary-500 hover:bg-primary-600 text-white font-medium btn-primary disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-6">
+              {/* Statut badge */}
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1.5 text-sm font-medium ${
+                  point.status === 'selected'
+                    ? 'bg-success-50 text-success-700'
+                    : 'bg-warning-50 text-warning-700'
+                }`}>
+                  {point.status === 'selected' ? 'Flashé' : 'À flasher'}
+                </span>
+                <span className="bg-primary-100 text-primary-700 px-3 py-1.5 text-sm font-medium">
+                  {point.points || 0} pts
+                </span>
+              </div>
+
+              {/* Nom */}
+              <div>
+                <div className={labelClasses}>Nom</div>
+                <p className="text-grey-700 font-medium text-lg">
+                  {point.name || 'Point sans nom'}
+                </p>
+              </div>
+
+              {/* Adresse */}
+              {point.address && (
+                <div>
+                  <div className={labelClasses}>Adresse</div>
+                  <p className="text-grey-700">{point.address}</p>
+                </div>
+              )}
+
+              {/* Coordonnées */}
+              <div>
+                <div className={labelClasses}>Coordonnées</div>
+                <p className="text-grey-700 font-mono text-sm">
+                  {point.latitude?.toFixed(6)}, {point.longitude?.toFixed(6)}
+                </p>
+                <a
+                  href={`https://www.google.com/maps?q=${point.latitude},${point.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-primary-500 hover:text-primary-700 text-sm mt-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Voir sur Google Maps
+                </a>
+              </div>
+
+              {/* Date de création */}
+              {point.created_at && (
+                <div>
+                  <div className={labelClasses}>Créé le</div>
+                  <p className="text-grey-700">
+                    {new Date(point.created_at).toLocaleDateString('fr-FR', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions (mode lecture) */}
+        {!isEditing && (
+          <div className="border-t border-grey-200 p-6 flex gap-3">
+            <button
+              onClick={handleDelete}
+              className="h-11 px-4 border border-error-500 text-error-500 font-medium hover:bg-error-50 transition-colors"
+            >
+              Supprimer
+            </button>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex-1 h-11 bg-primary-500 hover:bg-primary-600 text-white font-medium btn-primary"
+            >
+              Modifier
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
