@@ -141,17 +141,12 @@ export default function MapView({ filter, selectedPointId, onClosePopup }) {
     return selectedPointId ? allPoints.find(p => p.id === selectedPointId) : null;
   }, [selectedPointId, allPoints]);
 
-  // Ouvrir/fermer la popup du marker sélectionné
+  // Ouvrir la popup du marker sélectionné
   useEffect(() => {
     if (selectedPointId && markerRefs.current[selectedPointId]) {
       setTimeout(() => {
         markerRefs.current[selectedPointId]?.openPopup();
       }, 1000); // Attendre la fin de l'animation flyTo
-    } else if (selectedPointId === null) {
-      // Fermer toutes les popups quand aucun point n'est sélectionné
-      Object.values(markerRefs.current).forEach(marker => {
-        marker?.closePopup();
-      });
     }
   }, [selectedPointId]);
 
