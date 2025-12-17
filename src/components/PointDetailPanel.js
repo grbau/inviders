@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { usePoints } from '../contexts/PointsContext';
 
@@ -15,6 +15,8 @@ export default function PointDetailPanel({ point, onClose }) {
     points: '',
     status: 'to_select',
   });
+  const [suggestions, setSuggestions] = useState([]);
+  const skipFetchRef = useRef(false);
 
   // Gérer l'animation d'entrée et le body overflow
   useEffect(() => {
@@ -45,6 +47,52 @@ export default function PointDetailPanel({ point, onClose }) {
       setIsEditing(false);
     }
   }, [point]);
+
+  // Autocomplétion d'adresse
+  const fetchSuggestions = async (query) => {
+    if (!query.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`
+      );
+      const data = await res.json();
+      const unique = data.filter(
+        (s, index, self) => index === self.findIndex(t => t.display_name === s.display_name)
+      );
+      setSuggestions(unique);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des suggestions :', error);
+    }
+  };
+
+  useEffect(() => {
+    if (!isEditing) {
+      setSuggestions([]);
+      return;
+    }
+    if (skipFetchRef.current) {
+      skipFetchRef.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      fetchSuggestions(form.address);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [form.address, isEditing]);
+
+  const handleSelectSuggestion = (s) => {
+    skipFetchRef.current = true;
+    setForm({
+      ...form,
+      address: s.display_name,
+      latitude: s.lat,
+      longitude: s.lon,
+    });
+    setSuggestions([]);
+  };
 
   // Fermeture avec animation
   const handleClose = () => {
@@ -151,15 +199,33 @@ export default function PointDetailPanel({ point, onClose }) {
               </div>
 
               {/* Adresse */}
-              <div>
+              <div className="relative">
                 <label className={labelClasses}>Adresse</label>
-                <textarea
+                <input
+                  type="text"
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
-                  className="w-full px-4 py-3 border border-grey-300 bg-white text-grey-700 placeholder-grey-400 input-focus transition-all resize-none"
-                  rows={3}
-                  placeholder="Adresse complète"
+                  className={inputClasses}
+                  placeholder="Rechercher une adresse..."
                 />
+                {suggestions.length > 0 && (
+                  <ul className="absolute z-20 w-full bg-white border border-grey-300 shadow-lg mt-1 max-h-48 overflow-y-auto custom-scrollbar">
+                    {suggestions.map((s, idx) => (
+                      <li
+                        key={idx}
+                        onClick={() => handleSelectSuggestion(s)}
+                        className="px-4 py-3 hover:bg-primary-50 cursor-pointer text-sm text-grey-700 transition border-b border-grey-100 last:border-b-0"
+                      >
+                        <span className="text-primary-500 mr-2">
+                          <svg className="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          </svg>
+                        </span>
+                        {s.display_name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               {/* Coordonnées */}

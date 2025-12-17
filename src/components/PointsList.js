@@ -10,17 +10,37 @@ export default function PointsList({ filter, setFilter }) {
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [isRouteMode, setIsRouteMode] = useState(false);
   const [selectedForRoute, setSelectedForRoute] = useState([]);
+  const [sortOrder, setSortOrder] = useState('asc'); // 'asc' ou 'desc'
 
-  // Filtrer les points selon le filtre actif
+  // Filtrer et trier les points
   useEffect(() => {
-    const filteredRecords = filter === 'all'
-      ? allPoints
+    let filteredRecords = filter === 'all'
+      ? [...allPoints]
       : allPoints.filter(p => p.status === filter);
-    setPoints(filteredRecords);
-  }, [filter, allPoints]);
 
-  // Calculer le total des points
+    // Trier par nom
+    filteredRecords.sort((a, b) => {
+      const nameA = (a.name || '').toLowerCase();
+      const nameB = (b.name || '').toLowerCase();
+      if (sortOrder === 'asc') {
+        return nameA.localeCompare(nameB);
+      } else {
+        return nameB.localeCompare(nameA);
+      }
+    });
+
+    setPoints(filteredRecords);
+  }, [filter, allPoints, sortOrder]);
+
+  // Basculer l'ordre de tri
+  const toggleSortOrder = () => {
+    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+  };
+
+  // Calculer le total des points et pixels flashés
   const totalPoints = allPoints.reduce((sum, p) => sum + (p.points || 0), 0);
+  const flashedCount = allPoints.filter(p => p.status === 'selected').length;
+  const totalCount = allPoints.length;
 
   // Gérer la sélection pour l'itinéraire
   const togglePointForRoute = (point) => {
@@ -84,7 +104,7 @@ export default function PointsList({ filter, setFilter }) {
           Points de {currentProfile?.name || '...'}
         </h2>
         <div className="bg-primary-500 text-white px-4 py-2 rounded-chip font-semibold text-sm">
-          {totalPoints} pts
+          {flashedCount}/{totalCount} pixels · {totalPoints} pts
         </div>
       </div>
 
@@ -104,29 +124,47 @@ export default function PointsList({ filter, setFilter }) {
           ))}
         </div>
 
-        {/* Bouton mode itinéraire */}
-        {!isRouteMode ? (
+        <div className="flex items-center gap-2">
+          {/* Bouton tri */}
           <button
-            onClick={() => setIsRouteMode(true)}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 transition-colors whitespace-nowrap"
-            title="Créer un itinéraire"
+            onClick={toggleSortOrder}
+            className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-grey-600 hover:bg-grey-100 transition-colors whitespace-nowrap"
+            title={sortOrder === 'asc' ? 'Tri A-Z' : 'Tri Z-A'}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              {sortOrder === 'asc' ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+              )}
             </svg>
-            <span className="hidden sm:inline">Itinéraire</span>
+            <span className="hidden sm:inline">{sortOrder === 'asc' ? 'A-Z' : 'Z-A'}</span>
           </button>
-        ) : (
-          <button
-            onClick={exitRouteMode}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-grey-600 hover:bg-grey-100 transition-colors whitespace-nowrap"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <span className="hidden sm:inline">Annuler</span>
-          </button>
-        )}
+
+          {/* Bouton mode itinéraire */}
+          {!isRouteMode ? (
+            <button
+              onClick={() => setIsRouteMode(true)}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 transition-colors whitespace-nowrap"
+              title="Créer un itinéraire"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+              <span className="hidden sm:inline">Itinéraire</span>
+            </button>
+          ) : (
+            <button
+              onClick={exitRouteMode}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-grey-600 hover:bg-grey-100 transition-colors whitespace-nowrap"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span className="hidden sm:inline">Annuler</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Barre d'action itinéraire */}
