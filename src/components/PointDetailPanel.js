@@ -17,6 +17,7 @@ export default function PointDetailPanel({ point, onClose }) {
   });
   const [suggestions, setSuggestions] = useState([]);
   const skipFetchRef = useRef(false);
+  const [isAddressFocused, setIsAddressFocused] = useState(false);
 
   // Gérer l'animation d'entrée et le body overflow
   useEffect(() => {
@@ -69,7 +70,7 @@ export default function PointDetailPanel({ point, onClose }) {
   };
 
   useEffect(() => {
-    if (!isEditing) {
+    if (!isEditing || !isAddressFocused) {
       setSuggestions([]);
       return;
     }
@@ -81,7 +82,7 @@ export default function PointDetailPanel({ point, onClose }) {
       fetchSuggestions(form.address);
     }, 300);
     return () => clearTimeout(timer);
-  }, [form.address, isEditing]);
+  }, [form.address, isEditing, isAddressFocused]);
 
   const handleSelectSuggestion = (s) => {
     skipFetchRef.current = true;
@@ -205,10 +206,12 @@ export default function PointDetailPanel({ point, onClose }) {
                   type="text"
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  onFocus={() => setIsAddressFocused(true)}
+                  onBlur={() => setTimeout(() => setIsAddressFocused(false), 200)}
                   className={inputClasses}
                   placeholder="Rechercher une adresse..."
                 />
-                {suggestions.length > 0 && (
+                {suggestions.length > 0 && isAddressFocused && (
                   <ul className="absolute z-20 w-full bg-white border border-grey-300 shadow-lg mt-1 max-h-48 overflow-y-auto custom-scrollbar">
                     {suggestions.map((s, idx) => (
                       <li
