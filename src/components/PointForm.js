@@ -20,7 +20,9 @@ export default function PointForm() {
   const [suggestions, setSuggestions] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nameError, setNameError] = useState('');
+  const [isAddressFocused, setIsAddressFocused] = useState(false);
   const skipFetchRef = useRef(false);
+  const addressContainerRef = useRef(null);
 
   const fetchSuggestions = async (query) => {
     if (!query.trim()) {
@@ -41,16 +43,37 @@ export default function PointForm() {
     }
   };
 
+  // Fermer les suggestions quand on clique en dehors
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (addressContainerRef.current && !addressContainerRef.current.contains(event.target)) {
+        setIsAddressFocused(false);
+        setSuggestions([]);
+      }
+    };
+
+    if (isAddressFocused && suggestions.length > 0) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isAddressFocused, suggestions.length]);
+
   useEffect(() => {
     if (skipFetchRef.current) {
       skipFetchRef.current = false;
+      return;
+    }
+    if (!isAddressFocused) {
       return;
     }
     const timer = setTimeout(() => {
       fetchSuggestions(form.address);
     }, 300);
     return () => clearTimeout(timer);
-  }, [form.address]);
+  }, [form.address, isAddressFocused]);
 
   const handleSelectSuggestion = (s) => {
     skipFetchRef.current = true;
@@ -158,7 +181,7 @@ export default function PointForm() {
         </div>
 
         {/* Adresse */}
-        <div className="relative md:col-span-3">
+        <div className="relative md:col-span-3" ref={addressContainerRef}>
           <label className={labelClasses}>
             Adresse
           </label>
@@ -167,11 +190,12 @@ export default function PointForm() {
             placeholder="Rechercher une adresse..."
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
+            onFocus={() => setIsAddressFocused(true)}
             className={inputClasses}
           />
           <div className="h-5 mt-1"></div>
 
-          {suggestions.length > 0 && (
+          {suggestions.length > 0 && isAddressFocused && (
             <ul className="absolute z-20 w-full bg-white border border-grey-300 shadow-lg mt-1 max-h-48 overflow-y-auto custom-scrollbar top-[calc(100%-1.5rem)]">
               {suggestions.map((s, idx) => (
                 <li

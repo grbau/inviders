@@ -18,6 +18,7 @@ export default function PointDetailPanel({ point, onClose }) {
   const [suggestions, setSuggestions] = useState([]);
   const skipFetchRef = useRef(false);
   const [isAddressFocused, setIsAddressFocused] = useState(false);
+  const addressContainerRef = useRef(null);
 
   // Gérer l'animation d'entrée et le body overflow
   useEffect(() => {
@@ -68,6 +69,24 @@ export default function PointDetailPanel({ point, onClose }) {
       console.error('Erreur lors de la récupération des suggestions :', error);
     }
   };
+
+  // Fermer les suggestions quand on clique en dehors
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (addressContainerRef.current && !addressContainerRef.current.contains(event.target)) {
+        setIsAddressFocused(false);
+        setSuggestions([]);
+      }
+    };
+
+    if (isAddressFocused) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isAddressFocused]);
 
   useEffect(() => {
     if (!isEditing || !isAddressFocused) {
@@ -200,14 +219,13 @@ export default function PointDetailPanel({ point, onClose }) {
               </div>
 
               {/* Adresse */}
-              <div className="relative">
+              <div className="relative" ref={addressContainerRef}>
                 <label className={labelClasses}>Adresse</label>
                 <input
                   type="text"
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
                   onFocus={() => setIsAddressFocused(true)}
-                  onBlur={() => setTimeout(() => setIsAddressFocused(false), 200)}
                   className={inputClasses}
                   placeholder="Rechercher une adresse..."
                 />
