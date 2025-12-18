@@ -3,6 +3,8 @@ import Layout from './components/Layout';
 import MapView from './components/MapView';
 import PointsList from './components/PointsList';
 import PointForm from './components/PointForm';
+import UserComparison from './components/UserComparison';
+import DataExport from './components/DataExport';
 import LoginPage from './components/LoginPage';
 import { usePWAInstall } from './hooks/usePWAInstall';
 
@@ -82,6 +84,12 @@ function App() {
           <h2 className="text-h2 text-grey-700 mb-6">Ajouter un point</h2>
           <PointForm />
         </div>
+
+        {/* Comparaison des utilisateurs */}
+        <UserComparison />
+
+        {/* Export des données */}
+        <DataExport />
 
         {/* Bouton d'installation PWA - visible uniquement si disponible */}
         {canInstall && (
