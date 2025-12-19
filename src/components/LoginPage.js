@@ -66,11 +66,11 @@ export default function LoginPage({ onLogin }) {
           {/* Logo */}
           <div className="text-center mb-8">
             <img
-              src="/logo-inviders.png"
-              alt="Inviders"
+              src="/logo-invaders.png"
+              alt="Invaders"
               className="h-16 w-auto mx-auto mb-4"
             />
-            <h1 className="text-2xl font-bold text-grey-700">Inviders Baudic Semete</h1>
+            <h1 className="text-2xl font-bold text-grey-700">Invaders Baudic Semete</h1>
             <p className="text-grey-500 mt-2">Connectez-vous pour accéder à l'application</p>
           </div>
 

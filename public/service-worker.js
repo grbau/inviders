@@ -1,5 +1,5 @@
-// Inviders Service Worker - PWA Support
-const CACHE_NAME = 'inviders-cache-v1';
+// Invaders Service Worker - PWA Support
+const CACHE_NAME = 'invaders-cache-v1';
 
 // Resources to cache immediately on install
 const STATIC_ASSETS = [

@@ -116,11 +116,11 @@ export default function Layout({ children }) {
             {/* Logo */}
             <div className="flex items-center gap-3">
               <img
-                src="/logo-inviders.png"
-                alt="Inviders"
+                src="/logo-invaders.png"
+                alt="Invaders"
                 className="h-10 w-auto"
               />
-              <span className="text-xl font-semibold text-grey-700">inviders baudic semete</span>
+              <span className="text-xl font-semibold text-grey-700">invaders baudic semete</span>
             </div>
 
             {/* Desktop User Selector */}

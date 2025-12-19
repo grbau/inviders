@@ -21,10 +21,10 @@ root.render(
 // Register Service Worker for PWA support
 serviceWorkerRegistration.register({
   onSuccess: () => {
-    console.log('[Inviders] App ready for offline use!');
+    console.log('[Invaders] App ready for offline use!');
   },
   onUpdate: (registration) => {
-    console.log('[Inviders] New version available! Refresh to update.');
+    console.log('[Invaders] New version available! Refresh to update.');
     // Optional: Show a notification to the user
     if (window.confirm('Une nouvelle version est disponible. Voulez-vous rafraichir?')) {
       if (registration.waiting) {

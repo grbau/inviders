@@ -1,6 +1,6 @@
 {
-  "short_name": "Inviders",
-  "name": "Inviders - Gestion de Points",
+  "short_name": "Invaders",
+  "name": "Invaders - Gestion de Points",
   "description": "Application de suivi et gestion de points sur carte",
   "icons": [
     {
