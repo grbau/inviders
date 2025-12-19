@@ -84,11 +84,13 @@ export default function Layout({ children }) {
     <div className="min-h-screen bg-paris-background">
       {/* Header */}
       <header className="sticky top-0 z-50 shadow-md">
-        {/* Background animé avec slide de haut en bas */}
+        {/* Background animé - slide de gauche sur mobile, de haut en bas sur desktop */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div
             className={`absolute inset-0 bg-white/95 backdrop-blur-sm transition-transform duration-300 ease-out ${
-              isScrolled || mobileMenuOpen ? 'translate-y-0' : '-translate-y-full'
+              isScrolled || mobileMenuOpen
+                ? 'translate-x-0 md:translate-y-0'
+                : '-translate-x-full md:translate-x-0 md:-translate-y-full'
             }`}
           />
         </div>
@@ -176,54 +178,61 @@ export default function Layout({ children }) {
             </button>
           </div>
 
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden py-4 border-t border-grey-100">
-              <div className="text-xs text-grey-400 uppercase tracking-wide px-2 mb-3">
-                Changer de profil
-              </div>
-              <div className="space-y-1">
-                {profiles.map((profile) => (
-                  <button
-                    key={profile.id}
-                    onClick={() => {
-                      switchProfile(profile);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-2 py-2 text-left hover:bg-grey-50 transition-colors ${
-                      currentProfile?.id === profile.id ? 'bg-primary-50' : ''
-                    }`}
-                  >
-                    <ProfileAvatar profile={profile} size="md" />
-                    <span className="text-sm text-grey-700">{profile.name}</span>
-                    {currentProfile?.id === profile.id && (
-                      <svg className="w-4 h-4 text-primary-500 ml-auto" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* Bouton de déconnexion mobile */}
-              <div className="border-t border-grey-200 mt-4 pt-4">
-                <button
-                  onClick={() => {
-                    localStorage.removeItem('sessionExpiresAt');
-                    window.location.reload();
-                  }}
-                  className="w-full flex items-center gap-3 px-2 py-2 text-left hover:bg-red-50 transition-colors text-red-600"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                  <span className="text-sm font-medium">Déconnexion</span>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </header>
+
+      {/* Mobile Menu - Position fixed avec transition smooth */}
+      <div
+        className={`md:hidden fixed top-16 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm shadow-lg border-t border-grey-100 transition-all duration-300 ease-out ${
+          mobileMenuOpen
+            ? 'opacity-100 translate-x-0'
+            : 'opacity-0 -translate-x-full pointer-events-none'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="text-xs text-grey-400 uppercase tracking-wide px-2 mb-3">
+            Changer de profil
+          </div>
+          <div className="space-y-1">
+            {profiles.map((profile) => (
+              <button
+                key={profile.id}
+                onClick={() => {
+                  switchProfile(profile);
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-2 py-2 text-left hover:bg-grey-50 transition-colors ${
+                  currentProfile?.id === profile.id ? 'bg-primary-50' : ''
+                }`}
+              >
+                <ProfileAvatar profile={profile} size="md" />
+                <span className="text-sm text-grey-700">{profile.name}</span>
+                {currentProfile?.id === profile.id && (
+                  <svg className="w-4 h-4 text-primary-500 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Bouton de déconnexion mobile */}
+          <div className="border-t border-grey-200 mt-4 pt-4">
+            <button
+              onClick={() => {
+                localStorage.removeItem('sessionExpiresAt');
+                window.location.reload();
+              }}
+              className="w-full flex items-center gap-3 px-2 py-2 text-left hover:bg-red-50 transition-colors text-red-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span className="text-sm font-medium">Déconnexion</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Click outside to close profile menu */}
       {profileMenuOpen && (
