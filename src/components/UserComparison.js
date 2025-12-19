@@ -14,6 +14,7 @@ export default function UserComparison() {
   const [targetProfileId, setTargetProfileId] = useState('');
   const [transferLoading, setTransferLoading] = useState(false);
   const [transferMessage, setTransferMessage] = useState(null);
+  const [transferStatus, setTransferStatus] = useState('keep'); // 'keep', 'to_select', 'selected'
 
   // Charger les points pour les profils sélectionnés
   useEffect(() => {
@@ -91,6 +92,7 @@ export default function UserComparison() {
   const closeTransfertModal = () => {
     setShowTransfertModal(false);
     setTargetProfileId('');
+    setTransferStatus('keep');
   };
 
   // Copier les points sélectionnés vers le profil cible
@@ -115,13 +117,21 @@ export default function UserComparison() {
           if (originalPoint) break;
         }
 
+        // Déterminer le statut selon le choix de l'utilisateur
+        let finalStatus;
+        if (transferStatus === 'keep') {
+          finalStatus = originalPoint?.status || 'selected';
+        } else {
+          finalStatus = transferStatus;
+        }
+
         return {
           name: point.name,
           address: point.address,
           latitude: point.latitude,
           longitude: point.longitude,
           points: point.points,
-          status: originalPoint?.status || 'selected',
+          status: finalStatus,
           profile_id: targetProfileId,
         };
       });
@@ -205,9 +215,12 @@ export default function UserComparison() {
             longitude: point.longitude,
             profilesWithPoint: new Set(),
             pointsValue: point.points || 0,
+            statusByProfile: {}, // Statut par profil
           });
         }
-        allPointsMap.get(key).profilesWithPoint.add(profileId);
+        const mapEntry = allPointsMap.get(key);
+        mapEntry.profilesWithPoint.add(profileId);
+        mapEntry.statusByProfile[profileId] = point.status || 'selected';
       });
     });
 
@@ -224,6 +237,7 @@ export default function UserComparison() {
         longitude: data.longitude,
         points: data.pointsValue,
         profilesWithPoint: Array.from(data.profilesWithPoint),
+        statusByProfile: data.statusByProfile,
       };
 
       if (data.profilesWithPoint.size === selectedProfiles.length) {
@@ -232,6 +246,9 @@ export default function UserComparison() {
         differences.push(pointInfo);
       }
     });
+
+    // Tri des points par nom (alphabétique)
+    differences.sort((a, b) => a.name.localeCompare(b.name));
 
     return { commonPoints, differences };
   };
@@ -360,6 +377,7 @@ export default function UserComparison() {
                       <thead>
                         <tr className="bg-grey-50">
                           <th className="px-3 py-2 text-left font-medium text-grey-600">Nom</th>
+                          <th className="px-3 py-2 text-left font-medium text-grey-600">Statut</th>
                           <th className="px-3 py-2 text-left font-medium text-grey-600 hidden sm:table-cell">Adresse</th>
                           <th className="px-3 py-2 text-right font-medium text-grey-600">Points</th>
                         </tr>
@@ -368,6 +386,40 @@ export default function UserComparison() {
                         {comparisonData.commonPoints.map((point, idx) => (
                           <tr key={idx} className="hover:bg-grey-50">
                             <td className="px-3 py-2 text-grey-700">{point.name}</td>
+                            <td className="px-3 py-2">
+                              <div className="flex flex-wrap gap-1">
+                                {point.profilesWithPoint.map(profileId => {
+                                  const profile = getProfile(profileId);
+                                  const status = point.statusByProfile[profileId];
+                                  const isFlashed = status === 'selected';
+                                  return profile ? (
+                                    <span
+                                      key={profileId}
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                                        isFlashed
+                                          ? 'bg-green-100 text-green-700'
+                                          : 'bg-amber-100 text-amber-700'
+                                      }`}
+                                      title={`${profile.name}: ${isFlashed ? 'Flashé' : 'À flasher'}`}
+                                    >
+                                      <span
+                                        className="w-2 h-2 rounded-full"
+                                        style={{ backgroundColor: profile.color }}
+                                      ></span>
+                                      {isFlashed ? (
+                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                      ) : (
+                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                        </svg>
+                                      )}
+                                    </span>
+                                  ) : null;
+                                })}
+                              </div>
+                            </td>
                             <td className="px-3 py-2 text-grey-500 hidden sm:table-cell truncate max-w-[200px]">
                               {point.address || '-'}
                             </td>
@@ -612,6 +664,70 @@ export default function UserComparison() {
                       Tous les profils ont déjà ces points.
                     </p>
                   )}
+                </div>
+              </div>
+
+              {/* Choix du statut */}
+              <div className="mb-4">
+                <p className="text-sm font-medium text-grey-700 mb-2">Statut des points copiés :</p>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setTransferStatus('keep')}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                      transferStatus === 'keep'
+                        ? 'border-primary-500 bg-primary-50'
+                        : 'border-grey-200 hover:border-grey-300'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      transferStatus === 'keep' ? 'border-primary-500' : 'border-grey-300'
+                    }`}>
+                      {transferStatus === 'keep' && (
+                        <div className="w-2 h-2 rounded-full bg-primary-500"></div>
+                      )}
+                    </div>
+                    <span className={`font-medium ${transferStatus === 'keep' ? 'text-primary-700' : 'text-grey-700'}`}>
+                      Garder le statut original
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setTransferStatus('to_select')}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                      transferStatus === 'to_select'
+                        ? 'border-warning-500 bg-warning-50'
+                        : 'border-grey-200 hover:border-grey-300'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      transferStatus === 'to_select' ? 'border-warning-500' : 'border-grey-300'
+                    }`}>
+                      {transferStatus === 'to_select' && (
+                        <div className="w-2 h-2 rounded-full bg-warning-500"></div>
+                      )}
+                    </div>
+                    <span className={`font-medium ${transferStatus === 'to_select' ? 'text-warning-700' : 'text-grey-700'}`}>
+                      À flasher
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setTransferStatus('selected')}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                      transferStatus === 'selected'
+                        ? 'border-success-500 bg-success-50'
+                        : 'border-grey-200 hover:border-grey-300'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      transferStatus === 'selected' ? 'border-success-500' : 'border-grey-300'
+                    }`}>
+                      {transferStatus === 'selected' && (
+                        <div className="w-2 h-2 rounded-full bg-success-500"></div>
+                      )}
+                    </div>
+                    <span className={`font-medium ${transferStatus === 'selected' ? 'text-success-700' : 'text-grey-700'}`}>
+                      Flashé
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
