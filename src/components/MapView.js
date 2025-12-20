@@ -128,7 +128,7 @@ function InitialCenter({ points }) {
   return null;
 }
 
-export default function MapView({ filter, selectedPointId, onClosePopup }) {
+export default function MapView({ filter, selectedPointId, onClosePopup, onMarkerClick }) {
   const { allPoints } = usePoints();
   const [points, setPoints] = useState([]);
   const markerRefs = useRef({});
@@ -178,6 +178,7 @@ export default function MapView({ filter, selectedPointId, onClosePopup }) {
           icon={p.status === 'selected' ? greenIcon : orangeIcon}
           ref={(ref) => { markerRefs.current[p.id] = ref; }}
           eventHandlers={{
+            click: () => onMarkerClick?.(p.id),
             popupclose: () => onClosePopup?.()
           }}
         >

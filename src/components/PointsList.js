@@ -3,7 +3,7 @@ import { useUser } from '../contexts/UserContext';
 import { usePoints } from '../contexts/PointsContext';
 import PointDetailPanel from './PointDetailPanel';
 
-export default function PointsList({ filter, setFilter, onSelectPoint }) {
+export default function PointsList({ filter, setFilter, onSelectPoint, selectedPointFromMap, selectedPointId }) {
   const { currentProfile } = useUser();
   const { allPoints } = usePoints();
   const [points, setPoints] = useState([]);
@@ -13,6 +13,7 @@ export default function PointsList({ filter, setFilter, onSelectPoint }) {
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc' ou 'desc'
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef(null);
+  const pointRefs = useRef({});
 
   // Filtrer et trier les points
   useEffect(() => {
@@ -33,6 +34,15 @@ export default function PointsList({ filter, setFilter, onSelectPoint }) {
 
     setPoints(filteredRecords);
   }, [filter, allPoints, sortOrder]);
+
+  useEffect(() => {
+    if (selectedPointFromMap && pointRefs.current[selectedPointFromMap.id]) {
+      pointRefs.current[selectedPointFromMap.id].scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+  }, [selectedPointFromMap]);
 
   // Basculer l'ordre de tri
   const toggleSortOrder = () => {
@@ -261,6 +271,7 @@ export default function PointsList({ filter, setFilter, onSelectPoint }) {
             return (
               <div
                 key={p.id}
+                ref={(el) => (pointRefs.current[p.id] = el)}
                 onClick={() => {
                   if (isRouteMode) {
                     togglePointForRoute(p);
@@ -271,6 +282,8 @@ export default function PointsList({ filter, setFilter, onSelectPoint }) {
                 className={`flex items-start gap-3 p-4 transition-colors card-hover cursor-pointer ${
                   isRouteMode && isSelectedForRoute
                     ? 'bg-primary-50 border-2 border-primary-300'
+                    : selectedPointFromMap?.id === p.id || selectedPointId === p.id
+                    ? 'bg-primary-100 border-2 border-primary-400'
                     : 'bg-grey-50 hover:bg-grey-100'
                 }`}
               >

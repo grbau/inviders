@@ -13,6 +13,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [selectedPointId, setSelectedPointId] = useState(null);
+  const [selectedPointFromMap, setSelectedPointFromMap] = useState(null);
   const { canInstall, showPrompt } = usePWAInstall();
 
   // Vérifier si la session est valide
@@ -63,7 +64,16 @@ function App() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Liste des points */}
           <div className="order-1 h-[500px] sm:h-[550px] lg:h-[560px]">
-            <PointsList filter={filter} setFilter={setFilter} onSelectPoint={setSelectedPointId} />
+            <PointsList
+              filter={filter}
+              setFilter={setFilter}
+              onSelectPoint={(id) => {
+                setSelectedPointId(id);
+                setSelectedPointFromMap(null);
+              }}
+              selectedPointFromMap={selectedPointFromMap}
+              selectedPointId={selectedPointId}
+            />
           </div>
 
           {/* Carte */}
@@ -73,7 +83,15 @@ function App() {
                 Carte
               </div>
               <div className="flex-1">
-                <MapView filter={filter} selectedPointId={selectedPointId} onClosePopup={() => setSelectedPointId(null)} />
+                <MapView 
+                  filter={filter}
+                  selectedPointId={selectedPointId}
+                  onClosePopup={() => {}}
+                  onMarkerClick={(id) => {
+                    setSelectedPointFromMap({id});
+                    setSelectedPointId(null);
+                  }}
+                />
               </div>
             </div>
           </div>

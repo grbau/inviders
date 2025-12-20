@@ -339,14 +339,14 @@ export default function PointDetailPanel({ point, onClose }) {
               {/* Statut badge */}
               <div className="flex items-center gap-3">
                 <span className={`px-3 py-1.5 text-sm font-medium ${
-                  point.status === 'selected'
+                  form.status === 'selected'
                     ? 'bg-success-50 text-success-700'
                     : 'bg-warning-50 text-warning-700'
                 }`}>
-                  {point.status === 'selected' ? 'Flashé' : 'À flasher'}
+                  {form.status === 'selected' ? 'Flashé' : 'À flasher'}
                 </span>
                 <span className="bg-primary-100 text-primary-700 px-3 py-1.5 text-sm font-medium">
-                  {point.points || 0} pts
+                  {form.points || 0} pts
                 </span>
               </div>
 
@@ -354,15 +354,15 @@ export default function PointDetailPanel({ point, onClose }) {
               <div>
                 <div className={labelClasses}>Nom</div>
                 <p className="text-grey-700 font-medium text-lg">
-                  {point.name || 'Point sans nom'}
+                  {form.name || 'Point sans nom'}
                 </p>
               </div>
 
               {/* Adresse */}
-              {point.address && (
+              {form.address && (
                 <div>
                   <div className={labelClasses}>Adresse</div>
-                  <p className="text-grey-700">{point.address}</p>
+                  <p className="text-grey-700">{form.address}</p>
                 </div>
               )}
 
@@ -370,10 +370,10 @@ export default function PointDetailPanel({ point, onClose }) {
               <div>
                 <div className={labelClasses}>Coordonnées</div>
                 <p className="text-grey-700 font-mono text-sm">
-                  {point.latitude?.toFixed(6)}, {point.longitude?.toFixed(6)}
+                  {parseFloat(form.latitude)?.toFixed(6)}, {parseFloat(form.longitude)?.toFixed(6)}
                 </p>
                 <a
-                  href={`https://www.google.com/maps?q=${point.latitude},${point.longitude}`}
+                  href={`https://www.google.com/maps?q=${form.latitude},${form.longitude}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-primary-500 hover:text-primary-700 text-sm mt-2"
@@ -409,13 +409,13 @@ export default function PointDetailPanel({ point, onClose }) {
           <div className="border-t border-grey-200 p-6 flex gap-3">
             <button
               onClick={handleDelete}
-              className="h-11 px-4 border border-error-500 text-error-500 font-medium hover:bg-error-50 transition-colors"
+              className="flex-1 h-11 px-4 border border-error-500 text-error-500 font-medium hover:bg-error-50 transition-colors"
             >
               Supprimer
             </button>
             <button
               onClick={() => setIsEditing(true)}
-              className="flex-1 h-11 bg-primary-500 hover:bg-primary-600 text-white font-medium btn-primary"
+              className="flex-1 h-11 px-4 bg-primary-500 hover:bg-primary-600 text-white font-medium btn-primary"
             >
               Modifier
             </button>

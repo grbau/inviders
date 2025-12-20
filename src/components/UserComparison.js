@@ -383,7 +383,9 @@ export default function UserComparison() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-grey-100">
-                        {comparisonData.commonPoints.map((point, idx) => (
+                        {comparisonData.commonPoints
+                        .slice().sort((a, b) => a.name.localeCompare(b.name))
+                        .map((point, idx) => (
                           <tr key={idx} className="hover:bg-grey-50">
                             <td className="px-3 py-2 text-grey-700">{point.name}</td>
                             <td className="px-3 py-2">
