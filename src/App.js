@@ -4,6 +4,7 @@ import MapView from './components/MapView';
 import PointsList from './components/PointsList';
 import PointForm from './components/PointForm';
 import UserComparison from './components/UserComparison';
+import UserRanking from './components/UserRanking';
 import DataExport from './components/DataExport';
 import LoginPage from './components/LoginPage';
 import { usePWAInstall } from './hooks/usePWAInstall';
@@ -105,6 +106,9 @@ function App() {
 
         {/* Comparaison des utilisateurs */}
         <UserComparison />
+
+        {/* Classement des utilisateurs */}
+        <UserRanking />
 
         {/* Export des données */}
         <DataExport />

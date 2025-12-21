@@ -12,14 +12,27 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
   const [selectedForRoute, setSelectedForRoute] = useState([]);
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc' ou 'desc'
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const filterDropdownRef = useRef(null);
   const pointRefs = useRef({});
+  const listContainerRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   // Filtrer et trier les points
   useEffect(() => {
     let filteredRecords = filter === 'all'
       ? [...allPoints]
       : allPoints.filter(p => p.status === filter);
+
+    // Filtrer par recherche
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filteredRecords = filteredRecords.filter(p =>
+        (p.name || '').toLowerCase().includes(query) ||
+        (p.address || '').toLowerCase().includes(query)
+      );
+    }
 
     // Trier par nom
     filteredRecords.sort((a, b) => {
@@ -33,13 +46,27 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
     });
 
     setPoints(filteredRecords);
-  }, [filter, allPoints, sortOrder]);
+  }, [filter, allPoints, sortOrder, searchQuery]);
 
   useEffect(() => {
-    if (selectedPointFromMap && pointRefs.current[selectedPointFromMap.id]) {
-      pointRefs.current[selectedPointFromMap.id].scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
+    if (selectedPointFromMap && pointRefs.current[selectedPointFromMap.id] && listContainerRef.current) {
+      const container = listContainerRef.current;
+      const element = pointRefs.current[selectedPointFromMap.id];
+
+      // Calculer la position relative de l'élément par rapport au conteneur
+      const containerRect = container.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+
+      // Position actuelle du scroll + position de l'élément relative au conteneur
+      const scrollTop = container.scrollTop;
+      const elementTopRelative = elementRect.top - containerRect.top + scrollTop;
+
+      // Centrer l'élément dans le conteneur
+      const targetScroll = elementTopRelative - (container.clientHeight / 2) + (element.clientHeight / 2);
+
+      container.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: 'smooth'
       });
     }
   }, [selectedPointFromMap]);
@@ -182,6 +209,26 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Bouton recherche */}
+          <button
+            onClick={() => {
+              setIsSearchOpen(!isSearchOpen);
+              if (!isSearchOpen) {
+                setTimeout(() => searchInputRef.current?.focus(), 100);
+              } else {
+                setSearchQuery('');
+              }
+            }}
+            className={`flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+              isSearchOpen ? 'text-primary-600 bg-primary-50' : 'text-grey-600 hover:bg-grey-100'
+            }`}
+            title="Rechercher"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </button>
+
           {/* Bouton tri */}
           <button
             onClick={toggleSortOrder}
@@ -224,6 +271,40 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
         </div>
       </div>
 
+      {/* Champ de recherche */}
+      {isSearchOpen && (
+        <div className="mb-4">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-grey-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Rechercher un point..."
+              className="w-full h-11 pl-10 pr-10 border border-grey-300 bg-white text-grey-700 placeholder-grey-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-grey-400 hover:text-grey-600 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <p className="text-xs text-grey-500 mt-1">
+              {points.length} résultat{points.length !== 1 ? 's' : ''} trouvé{points.length !== 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Barre d'action itinéraire */}
       {isRouteMode && (
         <div className="mb-4 p-3 bg-primary-50 border border-primary-200 flex items-center justify-between gap-3">
@@ -252,7 +333,7 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
       )}
 
       {/* Liste des points */}
-      <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
+      <div ref={listContainerRef} className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
         {points.length === 0 ? (
           <div className="py-12 text-center">
             <div className="w-16 h-16 bg-grey-100 rounded-full flex items-center justify-center mx-auto mb-4">
