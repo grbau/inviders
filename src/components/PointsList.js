@@ -3,7 +3,7 @@ import { useUser } from '../contexts/UserContext';
 import { usePoints } from '../contexts/PointsContext';
 import PointDetailPanel from './PointDetailPanel';
 
-export default function PointsList({ filter, setFilter, onSelectPoint, selectedPointFromMap, selectedPointId }) {
+export default function PointsList({ filter, setFilter, selectedCity, setSelectedCity, onSelectPoint, selectedPointFromMap, selectedPointId }) {
   const { currentProfile } = useUser();
   const { allPoints } = usePoints();
   const [points, setPoints] = useState([]);
@@ -14,10 +14,32 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
   const filterDropdownRef = useRef(null);
+  const cityDropdownRef = useRef(null);
   const pointRefs = useRef({});
   const listContainerRef = useRef(null);
   const searchInputRef = useRef(null);
+
+  // Mapping des préfixes vers les noms de villes
+  const CITY_PREFIXES = {
+    'PA_': 'Paris',
+    'LDN_': 'Londres',
+    // Ajouter d'autres villes ici
+    // 'NYC_': 'New York',
+    // 'TKY_': 'Tokyo',
+  };
+
+  // Obtenir la ville d'un point basé sur son nom
+  const getCityFromName = (name) => {
+    if (!name) return 'Autres';
+    for (const [prefix, city] of Object.entries(CITY_PREFIXES)) {
+      if (name.toUpperCase().startsWith(prefix)) {
+        return city;
+      }
+    }
+    return 'Autres';
+  };
 
   // Filtrer et trier les points
   useEffect(() => {
@@ -48,6 +70,35 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
     setPoints(filteredRecords);
   }, [filter, allPoints, sortOrder, searchQuery]);
 
+  // Filtrer par ville si une ville est sélectionnée
+  const filteredByCity = selectedCity === 'all'
+    ? points
+    : points.filter(p => getCityFromName(p.name) === selectedCity);
+
+  // Regrouper les points par ville
+  const pointsByCity = filteredByCity.reduce((acc, point) => {
+    const city = getCityFromName(point.name);
+    if (!acc[city]) {
+      acc[city] = [];
+    }
+    acc[city].push(point);
+    return acc;
+  }, {});
+
+  // Ordre des villes (les villes définies d'abord, puis "Autres")
+  const cityOrder = [...Object.values(CITY_PREFIXES), 'Autres'];
+  const sortedCities = Object.keys(pointsByCity).sort((a, b) => {
+    const indexA = cityOrder.indexOf(a);
+    const indexB = cityOrder.indexOf(b);
+    return indexA - indexB;
+  });
+
+  // Liste des villes disponibles pour le filtre
+  const availableCities = [
+    { key: 'all', label: 'Toutes les villes' },
+    ...Object.values(CITY_PREFIXES).map(city => ({ key: city, label: city }))
+  ];
+
   useEffect(() => {
     if (selectedPointFromMap && pointRefs.current[selectedPointFromMap.id] && listContainerRef.current) {
       const container = listContainerRef.current;
@@ -76,12 +127,12 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
     setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
   };
 
-  // Calculer le total des points et pixels flashés
-  const totalPoints = allPoints
+  // Calculer le total des points et pixels flashés (basé sur la ville sélectionnée)
+  const totalPoints = filteredByCity
     .filter(p => p.status !== 'to_select')
     .reduce((sum, p) => sum + (p.points || 0), 0);
-  const flashedCount = allPoints.filter(p => p.status === 'selected').length;
-  const totalCount = allPoints.length;
+  const flashedCount = filteredByCity.filter(p => p.status === 'selected').length;
+  const totalCount = filteredByCity.length;
 
   // Gérer la sélection pour l'itinéraire
   const togglePointForRoute = (point) => {
@@ -137,11 +188,14 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
     { key: 'to_select', label: 'À flasher' },
   ];
 
-  // Fermer le dropdown au clic extérieur
+  // Fermer les dropdowns au clic extérieur
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
         setFilterDropdownOpen(false);
+      }
+      if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target)) {
+        setCityDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -149,6 +203,7 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
   }, []);
 
   const currentFilterLabel = filters.find(f => f.key === filter)?.label || 'Tous';
+  const currentCityLabel = availableCities.find(c => c.key === selectedCity)?.label || 'Toutes les villes';
 
   return (
     <div className="bg-white shadow-card p-6 h-full flex flex-col overflow-hidden">
@@ -163,16 +218,16 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
       </div>
 
       {/* Filtres et bouton itinéraire */}
-      <div className="flex items-center justify-between gap-4 mb-6">
-        {/* Custom dropdown filtre */}
-        <div className="relative" ref={filterDropdownRef}>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {/* Custom dropdown filtre statut */}
+        <div className="relative flex-1 sm:flex-none sm:min-w-[100px]" ref={filterDropdownRef}>
           <button
             onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
-            className="h-12 px-4 pr-10 border border-grey-300 bg-white text-grey-700 text-base font-medium rounded-lg hover:border-grey-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors cursor-pointer flex items-center gap-2 min-w-[140px]"
+            className="w-full h-9 px-3 pr-7 border border-grey-300 bg-white text-grey-700 text-sm font-medium rounded-lg hover:border-grey-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors cursor-pointer flex items-center gap-1"
           >
-            <span>{currentFilterLabel}</span>
+            <span className="truncate">{currentFilterLabel}</span>
             <svg
-              className={`w-4 h-4 text-grey-400 absolute right-3 transition-transform ${filterDropdownOpen ? 'rotate-180' : ''}`}
+              className={`w-4 h-4 text-grey-400 absolute right-2 transition-transform ${filterDropdownOpen ? 'rotate-180' : ''}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -182,7 +237,7 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
           </button>
 
           {filterDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 w-full bg-white border border-grey-200 rounded-lg shadow-lg py-1 z-50">
+            <div className="absolute top-full left-0 mt-1 w-full min-w-[120px] bg-white border border-grey-200 rounded-lg shadow-lg py-1 z-50">
               {filters.map(f => (
                 <button
                   key={f.key}
@@ -190,7 +245,7 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
                     setFilter(f.key);
                     setFilterDropdownOpen(false);
                   }}
-                  className={`w-full px-4 py-2.5 text-left text-base transition-colors flex items-center justify-between ${
+                  className={`w-full px-3 py-2 text-left text-sm transition-colors flex items-center justify-between ${
                     filter === f.key
                       ? 'bg-primary-50 text-primary-700 font-medium'
                       : 'text-grey-700 hover:bg-grey-50'
@@ -208,7 +263,55 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Custom dropdown filtre ville */}
+        <div className="relative flex-1 sm:flex-none sm:min-w-[140px]" ref={cityDropdownRef}>
+          <button
+            onClick={() => setCityDropdownOpen(!cityDropdownOpen)}
+            className="w-full h-9 px-3 pr-7 border border-grey-300 bg-white text-grey-700 text-sm font-medium rounded-lg hover:border-grey-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors cursor-pointer flex items-center gap-1"
+          >
+            <svg className="w-4 h-4 text-grey-500 flex-shrink-0 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            </svg>
+            <span className="truncate">{currentCityLabel}</span>
+            <svg
+              className={`w-4 h-4 text-grey-400 absolute right-2 transition-transform ${cityDropdownOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {cityDropdownOpen && (
+            <div className="absolute top-full left-0 mt-1 w-full min-w-[140px] bg-white border border-grey-200 rounded-lg shadow-lg py-1 z-50">
+              {availableCities.map(c => (
+                <button
+                  key={c.key}
+                  onClick={() => {
+                    setSelectedCity(c.key);
+                    setCityDropdownOpen(false);
+                  }}
+                  className={`w-full px-3 py-2 text-left text-sm transition-colors flex items-center justify-between whitespace-nowrap ${
+                    selectedCity === c.key
+                      ? 'bg-primary-50 text-primary-700 font-medium'
+                      : 'text-grey-700 hover:bg-grey-50'
+                  }`}
+                >
+                  <span>{c.label}</span>
+                  {selectedCity === c.key && (
+                    <svg className="w-4 h-4 text-primary-500 ml-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Boutons d'action */}
+        <div className="flex items-center gap-1 w-full sm:w-auto sm:ml-auto justify-end">
           {/* Bouton recherche */}
           <button
             onClick={() => {
@@ -219,7 +322,7 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
                 setSearchQuery('');
               }
             }}
-            className={`flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`p-2 rounded-lg transition-colors ${
               isSearchOpen ? 'text-primary-600 bg-primary-50' : 'text-grey-600 hover:bg-grey-100'
             }`}
             title="Rechercher"
@@ -232,7 +335,7 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
           {/* Bouton tri */}
           <button
             onClick={toggleSortOrder}
-            className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-grey-600 hover:bg-grey-100 transition-colors whitespace-nowrap"
+            className="p-2 rounded-lg text-grey-600 hover:bg-grey-100 transition-colors"
             title={sortOrder === 'asc' ? 'Tri A-Z' : 'Tri Z-A'}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -242,30 +345,28 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
               )}
             </svg>
-            <span className="hidden sm:inline">{sortOrder === 'asc' ? 'A-Z' : 'Z-A'}</span>
           </button>
 
           {/* Bouton mode itinéraire */}
           {!isRouteMode ? (
             <button
               onClick={() => setIsRouteMode(true)}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 transition-colors whitespace-nowrap"
+              className="p-2 rounded-lg text-primary-600 hover:bg-primary-50 transition-colors"
               title="Créer un itinéraire"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
               </svg>
-              <span className="hidden sm:inline">Itinéraire</span>
             </button>
           ) : (
             <button
               onClick={exitRouteMode}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-grey-600 hover:bg-grey-100 transition-colors whitespace-nowrap"
+              className="p-2 rounded-lg text-grey-600 hover:bg-grey-100 transition-colors"
+              title="Annuler l'itinéraire"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              <span className="hidden sm:inline">Annuler</span>
             </button>
           )}
         </div>
@@ -334,7 +435,7 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
 
       {/* Liste des points */}
       <div ref={listContainerRef} className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
-        {points.length === 0 ? (
+        {filteredByCity.length === 0 ? (
           <div className="py-12 text-center">
             <div className="w-16 h-16 bg-grey-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-grey-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -345,90 +446,109 @@ export default function PointsList({ filter, setFilter, onSelectPoint, selectedP
             <p className="text-sm text-grey-300 mt-1">Ajoutez votre premier point</p>
           </div>
         ) : (
-          points.map((p, index) => {
-            const isSelectedForRoute = selectedForRoute.some(sp => sp.id === p.id);
-            const routeOrder = selectedForRoute.findIndex(sp => sp.id === p.id) + 1;
-
-            return (
-              <div
-                key={p.id}
-                ref={(el) => (pointRefs.current[p.id] = el)}
-                onClick={() => {
-                  if (isRouteMode) {
-                    togglePointForRoute(p);
-                  } else {
-                    onSelectPoint?.(p.id);
-                  }
-                }}
-                className={`flex items-start gap-3 p-4 transition-colors card-hover cursor-pointer ${
-                  isRouteMode && isSelectedForRoute
-                    ? 'bg-primary-50 border-2 border-primary-300'
-                    : selectedPointFromMap?.id === p.id || selectedPointId === p.id
-                    ? 'bg-primary-100 border-2 border-primary-400'
-                    : 'bg-grey-50 hover:bg-grey-100'
-                }`}
-              >
-                {/* Checkbox ou indicateur de statut */}
-                {isRouteMode ? (
-                  <div className="flex-shrink-0 mt-0.5">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                      isSelectedForRoute
-                        ? 'bg-primary-500 text-white'
-                        : 'bg-grey-200 text-grey-400'
-                    }`}>
-                      {isSelectedForRoute ? routeOrder : index + 1}
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
-                    style={{ backgroundColor: p.status === 'selected' ? 'var(--color-success-500)' : 'var(--color-warning-500)' }}
-                  />
-                )}
-
-                {/* Contenu */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-grey-700 text-base truncate">
-                    {p.name || 'Point sans nom'}
-                  </h3>
-                  {p.address && (
-                    <p className="text-sm text-grey-500 mt-1 truncate">
-                      {p.address}
-                    </p>
-                  )}
-                  <p className="text-xs text-grey-400 font-mono mt-1">
-                    {p.latitude?.toFixed(4)}, {p.longitude?.toFixed(4)}
-                  </p>
-                </div>
-
-                {/* Points */}
-                <div className="flex-shrink-0 flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-chip text-sm font-medium ${
-                    p.status === 'selected'
-                      ? 'badge-success'
-                      : 'badge-warning'
-                  }`}>
-                    {p.points || 0} pts
-                  </span>
-                  {/* Bouton voir détails */}
-                  {!isRouteMode && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedPoint(p);
-                      }}
-                      className="p-2 text-grey-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
-                      title="Voir les détails"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
+          sortedCities.map((city) => (
+            <div key={city} className="space-y-2">
+              {/* Titre de la ville */}
+              <div className="sticky top-0 bg-white py-2 z-10 border-b border-grey-200">
+                <h3 className="text-sm font-semibold text-grey-600 uppercase tracking-wide flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  {city}
+                  <span className="text-grey-400 font-normal">({pointsByCity[city].length})</span>
+                </h3>
               </div>
-            );
-          })
+
+              {/* Points de cette ville */}
+              <div className="space-y-2">
+                {pointsByCity[city].map((p, index) => {
+                  const isSelectedForRoute = selectedForRoute.some(sp => sp.id === p.id);
+                  const routeOrder = selectedForRoute.findIndex(sp => sp.id === p.id) + 1;
+
+                  return (
+                    <div
+                      key={p.id}
+                      ref={(el) => (pointRefs.current[p.id] = el)}
+                      onClick={() => {
+                        if (isRouteMode) {
+                          togglePointForRoute(p);
+                        } else {
+                          onSelectPoint?.(p.id);
+                        }
+                      }}
+                      className={`flex items-start gap-3 p-4 transition-colors card-hover cursor-pointer ${
+                        isRouteMode && isSelectedForRoute
+                          ? 'bg-primary-50 border-2 border-primary-300'
+                          : selectedPointFromMap?.id === p.id || selectedPointId === p.id
+                          ? 'bg-primary-100 border-2 border-primary-400'
+                          : 'bg-grey-50 hover:bg-grey-100'
+                      }`}
+                    >
+                      {/* Checkbox ou indicateur de statut */}
+                      {isRouteMode ? (
+                        <div className="flex-shrink-0 mt-0.5">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                            isSelectedForRoute
+                              ? 'bg-primary-500 text-white'
+                              : 'bg-grey-200 text-grey-400'
+                          }`}>
+                            {isSelectedForRoute ? routeOrder : index + 1}
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
+                          style={{ backgroundColor: p.status === 'selected' ? 'var(--color-success-500)' : 'var(--color-warning-500)' }}
+                        />
+                      )}
+
+                      {/* Contenu */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-grey-700 text-base truncate">
+                          {p.name || 'Point sans nom'}
+                        </h3>
+                        {p.address && (
+                          <p className="text-sm text-grey-500 mt-1 truncate">
+                            {p.address}
+                          </p>
+                        )}
+                        <p className="text-xs text-grey-400 font-mono mt-1">
+                          {p.latitude?.toFixed(4)}, {p.longitude?.toFixed(4)}
+                        </p>
+                      </div>
+
+                      {/* Points */}
+                      <div className="flex-shrink-0 flex items-center gap-2">
+                        <span className={`px-3 py-1 rounded-chip text-sm font-medium ${
+                          p.status === 'selected'
+                            ? 'badge-success'
+                            : 'badge-warning'
+                        }`}>
+                          {p.points || 0} pts
+                        </span>
+                        {/* Bouton voir détails */}
+                        {!isRouteMode && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedPoint(p);
+                            }}
+                            className="p-2 text-grey-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
+                            title="Voir les détails"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
         )}
       </div>
 

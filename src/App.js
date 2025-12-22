@@ -11,6 +11,7 @@ import { usePWAInstall } from './hooks/usePWAInstall';
 
 function App() {
   const [filter, setFilter] = useState('all');
+  const [selectedCity, setSelectedCity] = useState('all');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [selectedPointId, setSelectedPointId] = useState(null);
@@ -68,6 +69,8 @@ function App() {
             <PointsList
               filter={filter}
               setFilter={setFilter}
+              selectedCity={selectedCity}
+              setSelectedCity={setSelectedCity}
               onSelectPoint={(id) => {
                 setSelectedPointId(id);
                 setSelectedPointFromMap(null);
@@ -84,8 +87,9 @@ function App() {
                 Carte
               </div>
               <div className="flex-1">
-                <MapView 
+                <MapView
                   filter={filter}
+                  selectedCity={selectedCity}
                   selectedPointId={selectedPointId}
                   onClosePopup={() => {}}
                   onMarkerClick={(id) => {
@@ -108,7 +112,7 @@ function App() {
         <UserComparison />
 
         {/* Classement des utilisateurs */}
-        <UserRanking />
+        <UserRanking selectedCity={selectedCity} />
 
         {/* Export des données */}
         <DataExport />

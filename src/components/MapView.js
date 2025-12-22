@@ -128,7 +128,56 @@ function InitialCenter({ points }) {
   return null;
 }
 
-export default function MapView({ filter, selectedPointId, onClosePopup, onMarkerClick }) {
+// Mapping des préfixes vers les noms de villes (doit correspondre à PointsList)
+const CITY_PREFIXES = {
+  'PA_': 'Paris',
+  'LDN_': 'Londres',
+};
+
+// Coordonnées des villes pour le recentrage
+const CITY_COORDINATES = {
+  'Paris': { lat: 48.8566, lng: 2.3522, zoom: 12 },
+  'Londres': { lat: 51.5074, lng: -0.1278, zoom: 12 },
+};
+
+const getCityFromName = (name) => {
+  if (!name) return 'Autres';
+  for (const [prefix, city] of Object.entries(CITY_PREFIXES)) {
+    if (name.toUpperCase().startsWith(prefix)) {
+      return city;
+    }
+  }
+  return 'Autres';
+};
+
+// Composant pour recentrer la carte sur une ville
+function CenterOnCity({ selectedCity, points }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (selectedCity && selectedCity !== 'all') {
+      // Utiliser les coordonnées prédéfinies de la ville
+      const cityCoords = CITY_COORDINATES[selectedCity];
+      if (cityCoords) {
+        map.flyTo([cityCoords.lat, cityCoords.lng], cityCoords.zoom, {
+          duration: 1
+        });
+      }
+    } else if (selectedCity === 'all' && points.length > 0) {
+      // Recentrer sur tous les points
+      const bestCenter = findBestCenter(points);
+      if (bestCenter) {
+        map.flyTo([bestCenter.lat, bestCenter.lng], 11, {
+          duration: 1
+        });
+      }
+    }
+  }, [selectedCity, map, points]);
+
+  return null;
+}
+
+export default function MapView({ filter, selectedCity, selectedPointId, onClosePopup, onMarkerClick }) {
   const { allPoints } = usePoints();
   const [points, setPoints] = useState([]);
   const markerRefs = useRef({});
@@ -150,13 +199,19 @@ export default function MapView({ filter, selectedPointId, onClosePopup, onMarke
     }
   }, [selectedPointId]);
 
-  // Filtrer les points selon le filtre actif
+  // Filtrer les points selon le filtre actif et la ville
   useEffect(() => {
-    const filteredRecords = filter === 'all'
+    let filteredRecords = filter === 'all'
       ? allPoints
       : allPoints.filter(p => p.status === filter);
+
+    // Filtrer par ville si une ville est sélectionnée
+    if (selectedCity && selectedCity !== 'all') {
+      filteredRecords = filteredRecords.filter(p => getCityFromName(p.name) === selectedCity);
+    }
+
     setPoints(filteredRecords);
-  }, [filter, allPoints]);
+  }, [filter, selectedCity, allPoints]);
 
   return (
     <MapContainer
@@ -171,6 +226,7 @@ export default function MapView({ filter, selectedPointId, onClosePopup, onMarke
       />
       <FlyToPoint point={selectedPoint} />
       <InitialCenter points={allPoints} />
+      <CenterOnCity selectedCity={selectedCity} points={allPoints} />
       {points.map(p => (
         <Marker
           key={p.id}

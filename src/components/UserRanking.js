@@ -2,9 +2,25 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { supabase } from '../services/supabaseClient';
 
-export default function UserRanking() {
+// Mapping des préfixes vers les noms de villes
+const CITY_PREFIXES = {
+  'PA_': 'Paris',
+  'LDN_': 'Londres',
+};
+
+// Fonction pour obtenir la ville à partir du nom
+const getCityFromName = (name) => {
+  for (const [prefix, city] of Object.entries(CITY_PREFIXES)) {
+    if (name?.startsWith(prefix)) {
+      return city;
+    }
+  }
+  return 'Autres';
+};
+
+export default function UserRanking({ selectedCity }) {
   const { profiles } = useUser();
-  const [rankings, setRankings] = useState([]);
+  const [rawData, setRawData] = useState([]); // Données brutes par profil
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
   const channelRef = useRef(null);
@@ -31,7 +47,7 @@ export default function UserRanking() {
     }
 
     try {
-      const rankingsData = [];
+      const profilesData = [];
 
       for (const profile of validProfiles) {
         const { data, error } = await supabase
@@ -40,27 +56,14 @@ export default function UserRanking() {
           .eq('profile_id', profile.id);
 
         if (!error && data) {
-          const totalPoints = data
-            .filter(p => p.status === 'selected')
-            .reduce((sum, p) => sum + (p.points || 0), 0);
-          const flashedCount = data.filter(p => p.status === 'selected').length;
-          const toFlashCount = data.filter(p => p.status === 'to_select').length;
-          const totalCount = data.length;
-
-          rankingsData.push({
+          profilesData.push({
             profile,
-            totalPoints,
-            flashedCount,
-            toFlashCount,
-            totalCount,
+            points: data, // Stocker tous les points bruts
           });
         }
       }
 
-      // Trier par points (décroissant)
-      rankingsData.sort((a, b) => b.totalPoints - a.totalPoints);
-
-      setRankings(rankingsData);
+      setRawData(profilesData);
     } catch (error) {
       console.error('Erreur lors du chargement du classement:', error);
     } finally {
@@ -73,6 +76,31 @@ export default function UserRanking() {
     setLoading(true);
     fetchRankingsRef.current();
   }, [profileIds]);
+
+  // Calculer les rankings filtrés par ville
+  const rankings = useMemo(() => {
+    return rawData.map(({ profile, points }) => {
+      // Filtrer les points par ville si une ville est sélectionnée
+      const filteredPoints = selectedCity === 'all'
+        ? points
+        : points.filter(p => getCityFromName(p.name) === selectedCity);
+
+      const totalPoints = filteredPoints
+        .filter(p => p.status === 'selected')
+        .reduce((sum, p) => sum + (p.points || 0), 0);
+      const flashedCount = filteredPoints.filter(p => p.status === 'selected').length;
+      const toFlashCount = filteredPoints.filter(p => p.status === 'to_select').length;
+      const totalCount = filteredPoints.length;
+
+      return {
+        profile,
+        totalPoints,
+        flashedCount,
+        toFlashCount,
+        totalCount,
+      };
+    }).sort((a, b) => b.totalPoints - a.totalPoints);
+  }, [rawData, selectedCity]);
 
   // S'abonner aux changements en temps réel
   useEffect(() => {
@@ -136,7 +164,14 @@ export default function UserRanking() {
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between text-left"
       >
-        <h2 className="text-h2 text-grey-700">Classement</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-h2 text-grey-700">Classement</h2>
+          {selectedCity && selectedCity !== 'all' && (
+            <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full font-medium">
+              {selectedCity}
+            </span>
+          )}
+        </div>
         <svg
           className={`w-5 h-5 text-grey-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
           fill="none"
@@ -170,47 +205,51 @@ export default function UserRanking() {
                 return (
                   <div
                     key={profile.id}
-                    className={`flex items-center gap-4 p-4 rounded-lg transition-colors ${
+                    className={`p-4 rounded-lg transition-colors ${
                       index === 0 ? 'bg-yellow-50 border border-yellow-200' :
                       index === 1 ? 'bg-grey-100 border border-grey-200' :
                       index === 2 ? 'bg-orange-50 border border-orange-200' :
                       'bg-grey-50'
                     }`}
                   >
-                    {/* Rang */}
-                    <div className="flex-shrink-0 w-10 flex justify-center">
-                      {getMedal(index)}
-                    </div>
+                    {/* Header : Rang + Avatar + Nom + Points */}
+                    <div className="flex items-center gap-3">
+                      {/* Rang */}
+                      <div className="flex-shrink-0 w-8 flex justify-center">
+                        {getMedal(index)}
+                      </div>
 
-                    {/* Avatar */}
-                    <div className="flex-shrink-0">
-                      {profile.picture ? (
-                        <img
-                          src={profile.picture}
-                          alt={profile.name}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                          style={{ backgroundColor: profile.color }}
-                        >
-                          {profile.initials}
-                        </div>
-                      )}
-                    </div>
+                      {/* Avatar */}
+                      <div className="flex-shrink-0">
+                        {profile.picture ? (
+                          <img
+                            src={profile.picture}
+                            alt={profile.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                            style={{ backgroundColor: profile.color }}
+                          >
+                            {profile.initials}
+                          </div>
+                        )}
+                      </div>
 
-                    {/* Infos */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
+                      {/* Nom + Points */}
+                      <div className="flex-1 min-w-0 flex items-center justify-between">
                         <span className="font-semibold text-grey-700 truncate">
                           {profile.name}
                         </span>
-                        <span className="text-lg font-bold text-primary-600 ml-2">
+                        <span className="text-lg font-bold text-primary-600 ml-2 flex-shrink-0">
                           {totalPoints} pts
                         </span>
                       </div>
+                    </div>
 
+                    {/* Barre de progression + Stats (en dessous) */}
+                    <div className="mt-3 pl-11 xs:pl-0 xs:ml-[4.5rem]">
                       {/* Barre de progression */}
                       <div className="h-2 bg-grey-200 rounded-full overflow-hidden">
                         <div
@@ -220,7 +259,7 @@ export default function UserRanking() {
                       </div>
 
                       {/* Stats */}
-                      <div className="flex items-center gap-3 mt-1 text-xs text-grey-500">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-grey-500">
                         <span className="flex items-center gap-1">
                           <span className="w-2 h-2 rounded-full bg-success-500"></span>
                           {flashedCount} flashés
