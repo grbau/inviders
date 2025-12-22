@@ -65,7 +65,7 @@ function App() {
         {/* Mobile: empilé (Liste -> Carte) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Liste des points */}
-          <div className="order-1 h-[500px] sm:h-[550px] lg:h-[560px]">
+          <div className="order-1 h-[600px] sm:h-[650px] lg:h-[560px]">
             <PointsList
               filter={filter}
               setFilter={setFilter}
