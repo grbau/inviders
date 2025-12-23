@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { usePoints } from '../contexts/PointsContext';
 import PointDetailPanel from './PointDetailPanel';
+import { getCityFromName, getAvailableCities, getCityOrder } from '../constants/cities';
 
 export default function PointsList({ filter, setFilter, selectedCity, setSelectedCity, onSelectPoint, selectedPointFromMap, selectedPointId }) {
   const { currentProfile } = useUser();
@@ -21,25 +22,6 @@ export default function PointsList({ filter, setFilter, selectedCity, setSelecte
   const listContainerRef = useRef(null);
   const searchInputRef = useRef(null);
 
-  // Mapping des préfixes vers les noms de villes
-  const CITY_PREFIXES = {
-    'PA_': 'Paris',
-    'LDN_': 'Londres',
-    // Ajouter d'autres villes ici
-    // 'NYC_': 'New York',
-    // 'TKY_': 'Tokyo',
-  };
-
-  // Obtenir la ville d'un point basé sur son nom
-  const getCityFromName = (name) => {
-    if (!name) return 'Autres';
-    for (const [prefix, city] of Object.entries(CITY_PREFIXES)) {
-      if (name.toUpperCase().startsWith(prefix)) {
-        return city;
-      }
-    }
-    return 'Autres';
-  };
 
   // Filtrer et trier les points
   useEffect(() => {
@@ -86,7 +68,7 @@ export default function PointsList({ filter, setFilter, selectedCity, setSelecte
   }, {});
 
   // Ordre des villes (les villes définies d'abord, puis "Autres")
-  const cityOrder = [...Object.values(CITY_PREFIXES), 'Autres'];
+  const cityOrder = getCityOrder();
   const sortedCities = Object.keys(pointsByCity).sort((a, b) => {
     const indexA = cityOrder.indexOf(a);
     const indexB = cityOrder.indexOf(b);
@@ -94,10 +76,7 @@ export default function PointsList({ filter, setFilter, selectedCity, setSelecte
   });
 
   // Liste des villes disponibles pour le filtre
-  const availableCities = [
-    { key: 'all', label: 'Toutes les villes' },
-    ...Object.values(CITY_PREFIXES).map(city => ({ key: city, label: city }))
-  ];
+  const availableCities = getAvailableCities();
 
   useEffect(() => {
     if (selectedPointFromMap && pointRefs.current[selectedPointFromMap.id] && listContainerRef.current) {
@@ -237,7 +216,7 @@ export default function PointsList({ filter, setFilter, selectedCity, setSelecte
           </button>
 
           {filterDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 w-full min-w-[120px] bg-white border border-grey-200 rounded-lg shadow-lg py-1 z-50">
+            <div className="absolute top-full left-0 mt-1 w-full min-w-[120px] bg-white border border-grey-200 rounded-lg shadow-lg py-1 z-50 max-h-50 overflow-y-auto custom-scrollbar">
               {filters.map(f => (
                 <button
                   key={f.key}
@@ -284,7 +263,7 @@ export default function PointsList({ filter, setFilter, selectedCity, setSelecte
           </button>
 
           {cityDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 w-full min-w-[140px] bg-white border border-grey-200 rounded-lg shadow-lg py-1 z-50">
+            <div className="absolute top-full left-0 mt-1 w-full min-w-[140px] bg-white border border-grey-200 rounded-lg shadow-lg py-1 z-50 max-h-60 overflow-y-auto custom-scrollbar">
               {availableCities.map(c => (
                 <button
                   key={c.key}

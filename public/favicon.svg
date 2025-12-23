@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" fill="#000"/>
+  <!-- Row 1 -->
+  <rect x="8" y="2" width="4" height="4" fill="#F59E0B"/>
+  <rect x="20" y="2" width="4" height="4" fill="#FBBF24"/>
+  <!-- Row 2 -->
+  <rect x="4" y="6" width="4" height="4" fill="#F59E0B"/>
+  <rect x="8" y="6" width="4" height="4" fill="#FBBF24"/>
+  <rect x="12" y="6" width="4" height="4" fill="#F59E0B"/>
+  <rect x="16" y="6" width="4" height="4" fill="#FBBF24"/>
+  <rect x="20" y="6" width="4" height="4" fill="#F59E0B"/>
+  <rect x="24" y="6" width="4" height="4" fill="#FBBF24"/>
+  <!-- Row 3 -->
+  <rect x="4" y="10" width="4" height="4" fill="#F97316"/>
+  <rect x="8" y="10" width="4" height="4" fill="#FFF"/>
+  <rect x="12" y="10" width="4" height="4" fill="#F97316"/>
+  <rect x="16" y="10" width="4" height="4" fill="#F59E0B"/>
+  <rect x="20" y="10" width="4" height="4" fill="#FFF"/>
+  <rect x="24" y="10" width="4" height="4" fill="#FBBF24"/>
+  <!-- Row 4 -->
+  <rect x="4" y="14" width="4" height="4" fill="#EA580C"/>
+  <rect x="8" y="14" width="4" height="4" fill="#F97316"/>
+  <rect x="12" y="14" width="4" height="4" fill="#F59E0B"/>
+  <rect x="16" y="14" width="4" height="4" fill="#F97316"/>
+  <rect x="20" y="14" width="4" height="4" fill="#F59E0B"/>
+  <rect x="24" y="14" width="4" height="4" fill="#F97316"/>
+  <!-- Row 5 -->
+  <rect x="8" y="18" width="4" height="4" fill="#EA580C"/>
+  <rect x="12" y="18" width="4" height="4" fill="#F97316"/>
+  <rect x="16" y="18" width="4" height="4" fill="#F59E0B"/>
+  <rect x="20" y="18" width="4" height="4" fill="#F97316"/>
+  <!-- Row 6 -->
+  <rect x="4" y="22" width="4" height="4" fill="#DC2626"/>
+  <rect x="12" y="22" width="4" height="4" fill="#EA580C"/>
+  <rect x="16" y="22" width="4" height="4" fill="#F97316"/>
+  <rect x="24" y="22" width="4" height="4" fill="#F59E0B"/>
+  <!-- Row 7 - feet -->
+  <rect x="8" y="26" width="4" height="4" fill="#EA580C"/>
+  <rect x="20" y="26" width="4" height="4" fill="#F97316"/>
+</svg>

@@ -2,6 +2,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import L from 'leaflet';
 import { usePoints } from '../contexts/PointsContext';
+import { getCityFromName, CITY_COORDINATES } from '../constants/cities';
 
 // Couleurs des markers (correspondant aux variables CSS)
 const MARKER_COLORS = {
@@ -128,27 +129,6 @@ function InitialCenter({ points }) {
   return null;
 }
 
-// Mapping des préfixes vers les noms de villes (doit correspondre à PointsList)
-const CITY_PREFIXES = {
-  'PA_': 'Paris',
-  'LDN_': 'Londres',
-};
-
-// Coordonnées des villes pour le recentrage
-const CITY_COORDINATES = {
-  'Paris': { lat: 48.8566, lng: 2.3522, zoom: 12 },
-  'Londres': { lat: 51.5074, lng: -0.1278, zoom: 12 },
-};
-
-const getCityFromName = (name) => {
-  if (!name) return 'Autres';
-  for (const [prefix, city] of Object.entries(CITY_PREFIXES)) {
-    if (name.toUpperCase().startsWith(prefix)) {
-      return city;
-    }
-  }
-  return 'Autres';
-};
 
 // Composant pour recentrer la carte sur une ville
 function CenterOnCity({ selectedCity, points }) {

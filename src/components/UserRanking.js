@@ -1,22 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { supabase } from '../services/supabaseClient';
-
-// Mapping des préfixes vers les noms de villes
-const CITY_PREFIXES = {
-  'PA_': 'Paris',
-  'LDN_': 'Londres',
-};
-
-// Fonction pour obtenir la ville à partir du nom
-const getCityFromName = (name) => {
-  for (const [prefix, city] of Object.entries(CITY_PREFIXES)) {
-    if (name?.startsWith(prefix)) {
-      return city;
-    }
-  }
-  return 'Autres';
-};
+import { getCityFromName } from '../constants/cities';
 
 export default function UserRanking({ selectedCity }) {
   const { profiles } = useUser();
@@ -251,10 +236,10 @@ export default function UserRanking({ selectedCity }) {
                     {/* Barre de progression + Stats (en dessous) */}
                     <div className="mt-3 pl-11 xs:pl-0 xs:ml-[4.5rem]">
                       {/* Barre de progression */}
-                      <div className="h-2 bg-grey-200 rounded-full overflow-hidden">
+                      <div className="h-2 bg-grey-300 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-primary-400 to-primary-600 transition-all duration-500"
-                          style={{ width: `${progressPercent}%` }}
+                          className="h-full transition-all duration-500"
+                          style={{ width: `${progressPercent}%`, backgroundColor: profile.color }}
                         />
                       </div>
 
