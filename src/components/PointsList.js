@@ -107,10 +107,17 @@ export default function PointsList({ filter, setFilter, selectedCity, setSelecte
   };
 
   // Calculer le total des points et pixels flashés (basé sur la ville sélectionnée)
-  const totalPoints = filteredByCity
-    .filter(p => p.status !== 'to_select')
-    .reduce((sum, p) => sum + (p.points || 0), 0);
-  const flashedCount = filteredByCity.filter(p => p.status === 'selected').length;
+  const flashedPoints = filteredByCity.filter(p => p.status === 'selected');
+  const basePoints = flashedPoints.reduce((sum, p) => sum + (p.points || 0), 0);
+
+  // Bonus de 100 points par ville découverte (uniquement si on affiche toutes les villes)
+  const flashedCities = selectedCity === 'all'
+    ? [...new Set(flashedPoints.map(p => getCityFromName(p.name)))]
+    : [];
+  const cityBonus = flashedCities.length * 100;
+
+  const totalPoints = basePoints + cityBonus;
+  const flashedCount = flashedPoints.length;
   const totalCount = filteredByCity.length;
 
   // Gérer la sélection pour l'itinéraire

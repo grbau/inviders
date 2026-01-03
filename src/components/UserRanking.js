@@ -70,10 +70,17 @@ export default function UserRanking({ selectedCity }) {
         ? points
         : points.filter(p => getCityFromName(p.name) === selectedCity);
 
-      const totalPoints = filteredPoints
-        .filter(p => p.status === 'selected')
-        .reduce((sum, p) => sum + (p.points || 0), 0);
-      const flashedCount = filteredPoints.filter(p => p.status === 'selected').length;
+      const flashedPoints = filteredPoints.filter(p => p.status === 'selected');
+      const basePoints = flashedPoints.reduce((sum, p) => sum + (p.points || 0), 0);
+
+      // Bonus de 100 points par ville découverte (uniquement si on affiche toutes les villes)
+      const flashedCities = selectedCity === 'all'
+        ? [...new Set(flashedPoints.map(p => getCityFromName(p.name)))]
+        : [];
+      const cityBonus = flashedCities.length * 100;
+
+      const totalPoints = basePoints + cityBonus;
+      const flashedCount = flashedPoints.length;
       const toFlashCount = filteredPoints.filter(p => p.status === 'to_select').length;
       const totalCount = filteredPoints.length;
 
